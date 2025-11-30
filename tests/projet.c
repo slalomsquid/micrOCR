@@ -633,69 +633,40 @@ double compareLettres(imageMatricielle* imgSrc, imageMatricielle* imgPolice) {
 LettrePolice* initPoliceArial() {
 
     int compteurFichiers = 70;
+
+    LettrePolice* lettresPolice = (LettrePolice*)calloc(compteurFichiers,sizeof(LettrePolice));
+    if (!lettresPolice) {
+        printf("Impossible d'alloc lettresPolice. Fermeture du programme !\n");
+        exit(-1);
+    }
+
     char tmpString[50];
     DonneesImageRGB* tmpImg = NULL;
     Rectangle minRect;
     Couleur noir = {0,0,0};
-    FILE* db = NULL; // Initiallise db
-    int i; 
-    
-    LettrePolice* lettresPolice = (LettrePolice*)calloc(compteurFichiers, sizeof(LettrePolice));
-    if (!lettresPolice) {
-        printf("Unable to allocate lettersPolice. Program closed!\n");
-        exit(-1);
-    }
 
-    // Open and check file before the loop
-    db = fopen("./Arial/DB-Arial.txt", "r"); 
-    if (db == NULL) {
-        printf("Erreur critique: Unable to open police database file: ./Arial/DB-Arial.txt\n");
-        free(lettresPolice); // Free allocated memory
-        exit(-1);
-    }
+    FILE* db = fopen("./Arial/DB-Arial.txt", "r");
 
-    for(i = 0; i < compteurFichiers; i++) {
-        // Read file name and character
+    int i, err = 0;
+    for(i=0; i<compteurFichiers; i++) {
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-result"
-        fscanf(db, "%s %c\n", lettresPolice[i].nomFichier, &lettresPolice[i].carac);
+#pragma GCC diagnostic ignored "-Wunused-result"  // shut up gcc (warning: ignoring return value of ‘scanf’, declared with attribute warn_unused_result [-Wunused-result])
+        fscanf(db, "%s %c\n", lettresPolice[i].nomFichier, &lettresPolice[i].carac);    // a cause du -O3.   L'astuce de caster le return en void ne marche plus apparement.
 #pragma GCC diagnostic pop
-
+        //printf("--- %s %c ---\n", lettresPolice[i].nomFichier, lettresPolice[i].carac);
         strcpy(lettresPolice[i].nomPolice, "arial");
         strcpy(tmpString, "./Arial/");
         strcat(tmpString, lettresPolice[i].nomFichier);
-        
-        // Load the image
         tmpImg = lisBMPRGB(tmpString);
-        
-        if (!tmpImg) {
-            printf("Erreur lors du chargement du caractère '%c' (%s) ! \n", lettresPolice[i].carac, tmpString);
-            lettresPolice[i].img = NULL;
-            lettresPolice[i].ratioWH = 0.0f;
-            continue; 
-        }
-        
-        // Crop
+        if (!tmpImg) { printf("Erreur lors du chargement du caractère '%c' ! \n", lettresPolice[i].carac); err = 1; }
         minRect = getMinRect(tmpImg, noir);
-        
-        // Assign cropped
-        lettresPolice[i].img = cropImageToRectangle(tmpImg, minRect);
-        
-        // Free the original temporary image
-        freeImageRGB(tmpImg);
-        tmpImg = NULL; // Reset pointer
-
-        // Calculate ratio only if the cropped
-        if (lettresPolice[i].img) {
-            lettresPolice[i].ratioWH = (float)lettresPolice[i].img->largeurImage / (float)lettresPolice[i].img->hauteurImage;
-        } else {
-             // Handle case where cropImageToRectangle failed memory allocation
-             lettresPolice[i].ratioWH = 0.0f;
-        }
+        lettresPolice[i].img = (!err) ? cropImageToRectangle(lisBMPRGB(tmpString), minRect) : NULL;
+        lettresPolice[i].ratioWH = (!err) ? ((float)lettresPolice[i].img->largeurImage / (float)lettresPolice[i].img->hauteurImage) : 0;
     }
 
-    // Close the file
     fclose(db);
+
+    free(tmpImg);
 
     return lettresPolice;
 }
@@ -740,70 +711,46 @@ int main(int argc, char **argv)
 	setlocale(LC_ALL, ""); // support unicode ! (é, à, è etc.)
  
 	printf("------------------------\n");
-	printf("--µOCR SlalomSquidFork--\n");
-	printf("----------v2.0----------\n");
-	printf("------(29/11/2025)------\n");
+	printf("--------- µOCR ---------\n");
+	printf("----------v2.7----------\n");
+	printf("------(26/01/2013)------\n");
 	printf("------------------------\n");
-
+    
     int fileExists = 0;
 
     if (argc > 1) {
         strcpy(nomFichier, argv[1]);
-        printf("Loading the image : %s\n", nomFichier);
+        printf("Chargement de l'image : %s\n", nomFichier);
     } else {
         char input[50];
         input[0] = '\0';
         
-// #pragma GCC diagnostic push
-// #pragma GCC diagnostic ignored "-Wunused-result"  // shut up gcc (warning: ignoring return value of ‘scanf’, declared with attribute warn_unused_result [-Wunused-result])
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-result"  // shut up gcc (warning: ignoring return value of ‘scanf’, declared with attribute warn_unused_result [-Wunused-result])
 												  // a cause du -O3.   L'astuce de caster le return en void ne marche pas(/plus?) apparement.
-// #pragma GCC diagnostic pop
-    input[0] = '\0'; // reset input
-    while (strlen(input) < 1) { 
-        printf("Please type the name of the file to load: \n"); 
-        
-        // read input
-        if (fgets(input, sizeof(input), stdin) == NULL) {
-            printf("Error\n");
-            break;
-        }
-
-        // remove newline char
-        size_t len = strlen(input);
-        if (len > 0 && input[len - 1] == '\n') {
-            input[len - 1] = '\0'; 
-
-        }
-        
-        // re-check the length after stripping
-        // handles only enter
-        if (strlen(input) < 1) {
-            printf("Filename cannot be empty. Please try again.\n");
-        }
-        }
-        // printf("%s\n", input); // print the filename
+        while (strlen(input)<1) { printf("Veuillez taper le nom du fichier à charger : \n"); fgets(input, sizeof(input), stdin);; }			      
+#pragma GCC diagnostic pop
+        printf("\n");
         strcpy(nomFichier, input);
     }
     
     if (strEndsWith(nomFichier,".jpg") || strEndsWith(nomFichier,".gif") || strEndsWith(nomFichier,".png") || strEndsWith(nomFichier,".tif") || strEndsWith(nomFichier,".tiff")) {
-			printf("Only BMP (24 bit) images are supported. An automatic conversion will be attempted (via GraphicsMagick).\n");
+			printf("Seules les images BMP (24 bit) sont supportées. Une conversion automatique va être tentée (via GraphicsMagick).\n");
 			
 			char cmd[100];
 			sprintf(cmd, "convert %s %s.bmp", nomFichier, nomFichier);
 			
 			if (system(cmd) == 0) {
-				printf("The conversion was successful. The new file was saved as %s.bmp. Loading it.\n", nomFichier);
+				printf("La conversion a réussie. Le nouveau fichier a été sauvé en tant que %s.bmp. Chargement de celui-ci.\n", nomFichier);
 				strcat(nomFichier, ".bmp");
 			} else {
-				printf("The conversion has failed, please convert your file manually and try again.\n");
+				printf("La conversion a écouchée, veuillez convertir votre fichier manuellement et réessayer..\n");
 				return -1;
 			}
 	} else if (!strEndsWith(nomFichier,".bmp")) {
 		strcat(nomFichier, ".bmp");
 	}
-
-    printf("Opening %s...\n", nomFichier);
-
+    
 	FILE *in;
     if ((in = fopen(nomFichier, "r")))
     {
@@ -814,14 +761,14 @@ int main(int argc, char **argv)
     if (fileExists) {
 		lettresArial = initPoliceArial();
 		if (!lettresArial) { 
-			printf("Font initialization problem! Please check that the font files are present and in the right place!\n");
+			printf("Problème d'initialisation de la police ! Veuillez vérifier que les fichiers de police sont bien présentset au bon endroit !\n");
 			return -1;
 		}
 		initialiseGfx(argc, argv);
-        prepareFenetreGraphique("micrOCR - Matrix character recognition", LargeurFenetre, HauteurFenetre);
+        prepareFenetreGraphique("micrOCR - Reconnaissance matricielle de caracteres", LargeurFenetre, HauteurFenetre);
         lanceBoucleEvenements();
     } else {
-        printf("Error opening file '%s'. Please verify its name/existence.:\n", nomFichier);
+        printf("Erreur de l'ouverture du fichier '%s'. Veuillez vérifier son nom/existence. : \n", nomFichier);
         return -1;
     }
 
@@ -1012,11 +959,11 @@ void gestionEvenement(EvenementGfx evenement)
 		
 		manualRect.w = -1;
 		
-		tabBoutons[0] = (Bouton){0.03, 0.92, 120, 30, "Launch [a]nalysis", 0, false, false};
-		tabBoutons[1] = (Bouton){0.3, 0.92, 200, 30, "Switch to manual [m]ode", 1, false, false};
+		tabBoutons[0] = (Bouton){0.03, 0.92, 120, 30, "Lancer [a]nalyse", 0, false, false};
+		tabBoutons[1] = (Bouton){0.3, 0.92, 200, 30, "Passer en [m]ode manuel", 1, false, false};
 		tabBoutons[2] = (Bouton){0.88, 0.92, 65, 30, "[R]eset", 2, false, false};
-		tabBoutons[3] = (Bouton){0.88, 0.04, 65, 30, "[Q]uit", 3, false, false};
-		tabBoutons[4] = (Bouton){0.02, 0.08, 200, 30, "Spelling check", 4, false, false};
+		tabBoutons[3] = (Bouton){0.88, 0.04, 65, 30, "[Q]uitter", 3, false, false};
+		tabBoutons[4] = (Bouton){0.02, 0.08, 200, 30, "Verification orthographique", 4, false, false};
 
         //demandeAnimation_ips(5);
         redimensionneFenetre(LargeurFenetre, HauteurFenetre);
@@ -1123,17 +1070,18 @@ void gestionEvenement(EvenementGfx evenement)
 				couleurCourante(0,0,0);
 				char phrase[200]; // par precaution
 				//unsigned long int surface = rect.w * rect.h;
-				sprintf(phrase, "Rotation angle: %d deg.", rotationManuelle ? tmpAngle%360 : bestAngle/*, rect.w, rect.h, surface*/);
+				sprintf(phrase, "Angle de rotation: %d deg.", rotationManuelle ? tmpAngle%360 : bestAngle/*, rect.w, rect.h, surface*/);
 				afficheChaine(phrase, 16, 5, hauteurFenetre()-20);
-				sprintf(phrase, "Background color: (%d,%d,%d)", couleurFondOrig.r, couleurFondOrig.g, couleurFondOrig.b);
+				sprintf(phrase, "Couleur du fond : (%d,%d,%d)", couleurFondOrig.r, couleurFondOrig.g, couleurFondOrig.b);
 				afficheChaine(phrase, 16, 5, hauteurFenetre()-70);
-				sprintf(phrase, "Text color: (%d,%d,%d)", couleurTexteOrig.r, couleurTexteOrig.g, couleurTexteOrig.b);
+				sprintf(phrase, "Couleur du texte : (%d,%d,%d)", couleurTexteOrig.r, couleurTexteOrig.g, couleurTexteOrig.b);
 				afficheChaine(phrase, 16, 5, hauteurFenetre()-45);
-				sprintf(phrase, "Probable text scale: %.2f (relative to font, Arial)", echelleLettres);
+				sprintf(phrase, "Echelle probable du texte : %.2f (par rapport a la police, Arial)", echelleLettres);
 				afficheChaine(phrase, 16, 5, hauteurFenetre()-95);
-				sprintf(phrase, "Recognised text: %s", bigStringCorrige);
+				sprintf(phrase, "Texte reconnu : %s", bigStringCorrige);
 				afficheChaine(phrase, 20, 5, hauteurFenetre()-145);
-				sprintf(phrase, "Showing [s]eparations: %s.", showWordsBounds ? "Yes" : "No");
+				
+				sprintf(phrase, "Affichage des [s]eparations : %s.", showWordsBounds ? "Oui" : "Non");
 				afficheChaine(phrase, 16, 5, 10);
 							
 				paintBouton(tabBoutons[4]); // correction
@@ -1152,13 +1100,13 @@ void gestionEvenement(EvenementGfx evenement)
 				
 				if (rotationManuelle) {
 					couleurCourante(0,0,0);
-					sprintf(phrase, "Manual mode:");
+					sprintf(phrase, "Mode manuel :");
 					afficheChaine(phrase, 16, 5, 72);
 					sprintf(phrase, "_________");
 					afficheChaine(phrase, 16, 5, 68);
-					sprintf(phrase, "Manual selection of the trimming rectangle: with the mouse (click&drag)");
+					sprintf(phrase, "Selection manuelle du rectangle de rognage : avec la souris (click&drag)");
 					afficheChaine(phrase, 16, 5, 40);
-					sprintf(phrase, "Manual image rotation: arrows or [+] /[-]. Current angle = %d", tmpAngle%360);
+					sprintf(phrase, "Rotation manuelle de l'image : fleches ou [+] / [-]. Angle courant = %d", tmpAngle%360);
 					afficheChaine(phrase, 16, 5, 10);
 				}
 			}
@@ -1180,7 +1128,7 @@ void gestionEvenement(EvenementGfx evenement)
 		case 'a':
 			
 			
-			printf("Analysis requested (%s. mode)\n", rotationManuelle ? "manual" : "automatic");   
+			printf("Analyse demandée (mode %s.)\n", rotationManuelle ? "manuel" : "automatique");   
 			
 				// multithreading a faire ?
 				
@@ -1274,7 +1222,7 @@ void gestionEvenement(EvenementGfx evenement)
 					
 
 					if (ok == -1) {
-						printf("Fatal error when detecting letters. Program closed!\n");
+						printf("Erreur fatale lors de la détection des lettres. Fermeture du programme !\n");
 						exit(-1);
 					}
 						
@@ -1288,7 +1236,7 @@ void gestionEvenement(EvenementGfx evenement)
 					DonneesImageRGB* tmpResizedImg = NULL;
 					tabCorresp = (Correspondance*)calloc(nbrDeLettres,sizeof(Correspondance));
 					if (!tabCorresp) {
-						printf("Unable to allocate tabCorresp. Program closed!\n");
+						printf("Impossible d'alloc tabCorresp. Fermeture du programme !\n");
 						exit(-1);
 					}
 									
@@ -1381,7 +1329,7 @@ void gestionEvenement(EvenementGfx evenement)
 						}
 					}
 					
-					printf("Text found: %s\n", stringFinalAvecEspaces);
+					printf("Texte trouvé : %s\n", stringFinalAvecEspaces);
 					
 					strcat(stringFinalAvecEspaces, "\n");
 					strcat(bigString, stringFinalAvecEspaces);
@@ -1392,9 +1340,9 @@ void gestionEvenement(EvenementGfx evenement)
 				goto afterCorrect;
 				
 				correct:
-					printf("Uncorrected final text: %s\n", bigString);
+					printf("Texte final non corrigé : %s\n", bigString);
 					bigStringCorrige = spellCheck(bigString);
-					printf("Final corrected text: %s\n", bigStringCorrige);
+					printf("Texte final corrigé : %s\n", bigStringCorrige);
 				
 				afterCorrect:
 					if (0) printf("42."); // wtf label error
@@ -1406,7 +1354,7 @@ void gestionEvenement(EvenementGfx evenement)
 					fputs("\n ",pFile);
 					fclose(pFile);
 									
-					printf("Final text saved in text file '%s'\n", nomFichierOut);
+					printf("Texte final sauvegardé dans le fichier texte '%s'\n", nomFichierOut);
 					free(nomFichierOut);
 					
 					//tmpAngle = 0;
@@ -1485,11 +1433,11 @@ void gestionEvenement(EvenementGfx evenement)
 			analysisDone = 0;
 			imageBest = imageTraitement;
 			rotationManuelle = !rotationManuelle;
-			if (strcmp(tabBoutons[1].txt, "Switch to manual [m]ode")==0) {
-				strcpy(tabBoutons[1].txt, "Switch to automatic [m]ode");
+			if (strcmp(tabBoutons[1].txt, "Passer en [m]ode manuel")==0) {
+				strcpy(tabBoutons[1].txt, "Passer en [m]ode automatique");
 				tabBoutons[1].w += 30;
 			} else {
-				strcpy(tabBoutons[1].txt, "Switch to manual [m]ode");
+				strcpy(tabBoutons[1].txt, "Passer en [m]ode manuel");
 				tabBoutons[1].w -= 30;
 			}
 			

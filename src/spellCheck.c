@@ -9,12 +9,48 @@
  */
  
 #include "spellCheck.h"
+#include <ctype.h> // For isspace()
+#include <string.h>
 
 ///
 ///	Geekou Projet fonctions
 ///
 ///=========================================================================
 
+// trims the spaces from the end of a string
+void trim_trailing(char *str) {
+    int len = strlen(str);
+    
+    // Iterate backward from the last character (len - 1)
+    while (len > 0 && isspace(str[len - 1])) {
+        len--; // Move index inward
+    }
+    
+    // Set the new end of the string
+    str[len] = '\0';
+}
+
+// copies a character string by creating a new identical string
+char* copystringcharacter(const char* texteOriginal)
+{
+    if(texteOriginal == NULL)
+        return NULL;
+
+    char* texteCopie = (char*) malloc(sizeof(char)*(strlen(texteOriginal)+1));
+
+    if (texteCopie == NULL) {
+        return NULL;
+    }
+    
+    strcpy(texteCopie, texteOriginal);
+
+    texteCopie[strcspn(texteCopie, "\n")] = '\0'; 
+    trim_trailing(texteCopie); 
+    
+    return texteCopie;
+}
+
+// main func
 char* spellCheck(const char* monTexte)
 {
 	pDictionnaire monDico = OuvreDictionnaire("dicoFR.txt");
@@ -23,8 +59,11 @@ char* spellCheck(const char* monTexte)
 	if(monTexte == NULL || monDico == NULL)	
 		return NULL;
 		
-	char* texteOriginal = copieChaineCaractere(monTexte);
-	char* texteCorrige = copieChaineCaractere(monTexte);
+	char* texteOriginal = copystringcharacter(monTexte);
+	// Now placed in copystringcharacter()
+	// texteOriginal[strcspn(texteOriginal, "\n")] = '\0'; // Remove trailing \n
+	// trim_trailing(texteOriginal);
+	char* texteCorrige = copystringcharacter(monTexte);
 	char* p = NULL;
 	char* pCopie = NULL;
 	char* pCorrige = NULL;
@@ -32,7 +71,7 @@ char* spellCheck(const char* monTexte)
 	int Mode;
 	int YesNo;
 	
-	printf ("Correction de : \n\t '%s' \n",texteOriginal);
+	printf ("Correction of: \n\t '%s' \n",texteOriginal);
 	p = strtok(texteOriginal,STRTOK_SYNTAX);
 	while(p != NULL && strlen(p)>1 && !estUnNombre(p))
 	{
@@ -50,7 +89,7 @@ char* spellCheck(const char* monTexte)
 			//
 			if(strcmp(p,pCorrige) == 0) {
 				char tmpStr[120];
-				sprintf(tmpStr, "Impossible de trouver une correction automatique pour %s \nEntrez une correction : ",p);
+				sprintf(tmpStr, "Unable to find autocorrect %s \nEnter a correction: ",p);
 				pointeurCorrectionManuelle = DemandeCorrectionManuelle(tmpStr, p);
 			}
 			else
@@ -128,8 +167,10 @@ char* DemandeCorrectionManuelle(const char* MessageDemande,char* pMot)
 
 	printf("%s",MessageDemande);
 	//scanf("%s",CorrectionManuelle);
-	gets(CorrectionManuelle);
-	pointeurCorrectionManuelle = copieChaineCaractere(CorrectionManuelle);
+	// gets(CorrectionManuelle);
+	fgets(CorrectionManuelle, sizeof(CorrectionManuelle), stdin); //Replace to prevent overflow and warning
+	// CorrectionManuelle[strcspn(CorrectionManuelle, "\n")] = '\0'; // Remove trailing \n left by fgets // Not needed
+	pointeurCorrectionManuelle = copystringcharacter(CorrectionManuelle);
 
 	return pointeurCorrectionManuelle;
 }
@@ -219,20 +260,31 @@ char* LisMot(pFILE monFichier)
 }
 
 ///
-///	Operations sur les chaines de charactères
+///	Operations on character strings
 ///
 ///=========================================================================
 char* chercheEtRemplace(char* maChaine, const char* ARemplacer, const char* RemplacePar)
-{ 
+{  
+
+	char* replacement_copy = strdup(RemplacePar);
+
+	if (replacement_copy == NULL) {
+        return NULL; // Return NULL or handle error
+    }
+
 	char* tmp = maChaine; 
 	char* result; 
 	int   found = 0; 
-	int   length, reslen; 
-	int   oldlen = strlen(ARemplacer); 
-	int   newlen = strlen(RemplacePar); 
-	
-	printf("Remplacement de '%s' par '%s' dans '%s' \n",ARemplacer,RemplacePar,maChaine);
+	int   length, reslen;
 
+	replacement_copy[strcspn(replacement_copy, "\n")] = '\0'; // Remove \n
+
+	int newlen = strlen(replacement_copy);
+	int   oldlen = strlen(ARemplacer); 
+	
+	trim_trailing(RemplacePar);
+
+	printf("Replacing '%s' with '%s' in '%s' \n",ARemplacer,RemplacePar,maChaine);
 	while ((tmp = strstr(tmp, ARemplacer)) != NULL) 
 		found++, tmp += oldlen;
 		
@@ -240,7 +292,7 @@ char* chercheEtRemplace(char* maChaine, const char* ARemplacer, const char* Remp
 
 	length = strlen(maChaine) + found * (newlen - oldlen); 
 	if ( (result = (char *)malloc(length+1)) == NULL)
-		printf("chercheEtRemplace() : Pas assez de memoire !\n");
+		printf("searchAndReplace(): Not enough memory!\n");
 	else
 	{ 
 		tmp = maChaine; 
@@ -260,7 +312,7 @@ char* chercheEtRemplace(char* maChaine, const char* ARemplacer, const char* Remp
 } 
 
 ///
-///	Transforme en minuscule une chaine de charactère puis supprime de la mémoire la chaine d'origine
+///	Transforms a character string into lowercase then deletes the original string from memory
 ///
 char* transformeEnMinuscule(char* maChaine)
 {
@@ -278,7 +330,7 @@ char* transformeEnMinusculeSansToucher(const char* maChaine)
 	if(maChaine == NULL)
 		return NULL;
 	uint i;
-	char* EnMIN = copieChaineCaractere(maChaine);
+	char* EnMIN = copystringcharacter(maChaine);
 	for(i = 0 ; i < strlen(maChaine); i++)
 		if(isupper(maChaine[i]))
 			EnMIN[i] = tolower(maChaine[i]);
@@ -309,17 +361,6 @@ char* transformeEnPremiereLettreMajuscule(char* maChaine)
 			maChaine[i] = tolower(maChaine[i]);
 	}
 	return maChaine;
-}
-///
-///	copie une chaine de charactère en créant une nouvelle chaine identique
-///
-char* copieChaineCaractere(const char* texteOriginal)
-{
-	if(texteOriginal == NULL)
-		return NULL;
-	char* texteCopie = (char*) malloc(sizeof(char)*(strlen(texteOriginal)+1));
-	strcpy(texteCopie,texteOriginal);
-	return texteCopie;
 }
 
 int estUnNombre(const char * s)

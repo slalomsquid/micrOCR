@@ -1,5 +1,6 @@
 exemple: exemple.c libisentlib.a
-	gcc -Wall exemple.c -o exemple -lm libisentlib.a -lglut
+# 	gcc -Wall exemple.c -o exemple -lm libisentlib.a -lglut
+	gcc -Wall exemple.c -o exemple -lm libisentlib.a -framework OpenGL -framework GLUT
 	
 # Sous MacOSX, remplacer la ligne de commande ci-dessus par la suivante :
 #	gcc -Wall exemple.c -o exemple -lm libisentlib.a -framework OpenGL -framework GLUT
@@ -30,7 +31,7 @@ ThreadLib.o: ThreadLib.c ThreadLib.h
 	gcc -Wall -O2 -c ThreadLib.c
 
 VectorLib.o: VectorLib.c VectorLib.h
-	gcc -Wall -O2 -c VectorLib.c -msse3
+	gcc -Wall -O2 -c VectorLib.c
 
 WavLib.o: WavLib.c WavLib.h OutilsLib.h
 	gcc -Wall -O2 -c WavLib.c -Wno-unused-result
