@@ -1,9 +1,7 @@
 exemple: exemple.c libisentlib.a
 # 	gcc -Wall exemple.c -o exemple -lm libisentlib.a -lglut
+#MacOSX:
 	gcc -Wall exemple.c -o exemple -lm libisentlib.a -framework OpenGL -framework GLUT
-	
-# Sous MacOSX, remplacer la ligne de commande ci-dessus par la suivante :
-#	gcc -Wall exemple.c -o exemple -lm libisentlib.a -framework OpenGL -framework GLUT
 
 libisentlib.a: BmpLib.o ErreurLib.o ESLib.o GfxLib.o OutilsLib.o SocketLib.o ThreadLib.o VectorLib.o WavLib.o
 	ar r libisentlib.a BmpLib.o ErreurLib.o ESLib.o GfxLib.o OutilsLib.o SocketLib.o ThreadLib.o VectorLib.o WavLib.o

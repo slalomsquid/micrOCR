@@ -1,5 +1,6 @@
 projet: clean spell.o spellCheck.o projet.o
 # 	gcc -O3 spell.o spellCheck.o projet.o -o projet -lm libisentlib.a -lglut
+#MacOSX:
 	gcc -O3 spell.o spellCheck.o projet.o -o projet -lm libisentlib.a -framework OpenGL -framework GLUT
 
 spell.o: spell.c spell.h
